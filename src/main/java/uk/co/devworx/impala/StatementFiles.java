@@ -1,20 +1,19 @@
 package uk.co.devworx.impala;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 /**
  * Impala script files typically contain many statements which are delimited by ';'
@@ -89,9 +88,9 @@ public class StatementFiles
 		statementFiles = allSQLFiles.stream().map(sqlFile -> _buildStatementFile(sqlFile, rootDirectory, workingDirectoryRoot)).collect(Collectors.toList());
 	}
 
-	private static StatementFile _buildStatementFile(Path sqlFile, Path rootDirectory, Path workingDirectoryRoot) throws ImpalaQueryException
+	private StatementFile _buildStatementFile(Path sqlFile, Path rootDirectory, Path workingDirectoryRoot) throws ImpalaQueryException
 	{
-		return StatementFile.create(sqlFile, rootDirectory, workingDirectoryRoot);
+		return StatementFileFactory.create(this, sqlFile, rootDirectory, workingDirectoryRoot);
 	}
 
 	private static List<Path> _buildAllSQLFilesList(Path rootDirectory)
@@ -122,6 +121,25 @@ public class StatementFiles
 		}
 	}
 
+	public Path getRootDirectory()
+	{
+		return rootDirectory;
+	}
+
+	public Path getWorkingDirectoryRoot()
+	{
+		return workingDirectoryRoot;
+	}
+
+	public List<Path> getAllSQLFiles()
+	{
+		return allSQLFiles;
+	}
+
+	public List<StatementFile> getStatementFiles()
+	{
+		return statementFiles;
+	}
 }
 
 

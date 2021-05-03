@@ -1,183 +1,133 @@
 package uk.co.devworx.impala;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.impala.analysis.Parser;
+import org.apache.impala.analysis.StatementBase;
+import org.apache.impala.common.AnalysisException;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.DecimalFormat;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * Represents an Impala file - with sub file into which it has been split.
  *
+ * You should obtain instances of this class by using the StatementFileFactory
+ *
  */
 public class StatementFile
 {
-	static final Logger logger = LogManager.getLogger(StatementFile.class);
+	private final StatementFiles parent;
+	private final Path sqlFile;
 
-	public static final String CMD_END_MARKER = ";";
-	public static final String COMMENT_MARKER = "--";
+	private final List<Path> commandFiles;
+	private final List<StatementFileParsed> parseds;
 
-	/**
-	 * Creates a statements file
-	 *
-	 */
-	public static StatementFile create(	final Path sqlFileP,
-										final Path rootDirectoryP,
-										final Path workingDirectoryRootP) throws ImpalaQueryException
+	private final SortedMap<Integer, TargetLex> linesLex;
+
+	protected StatementFile(final StatementFiles parent,
+							final Path sqlFile,
+							final List<Path> commandFiles,
+							final SortedMap<Integer, TargetLex> linesLex) throws ImpalaQueryException
 	{
-		final Path sqlFileRelative = rootDirectoryP.toAbsolutePath().relativize(sqlFileP.toAbsolutePath());
-		final Path sqlFileTarget = workingDirectoryRootP.resolve(sqlFileRelative);
+		this.parent = parent;
+		this.sqlFile = sqlFile;
+		this.commandFiles = Collections.unmodifiableList(commandFiles);
+		this.linesLex = Collections.unmodifiableSortedMap(linesLex);
+		parseds = commandFiles.stream().map(this::parsed).collect(Collectors.toList());
+	}
 
-		deleteAndRecreateTargetDirectory(sqlFileTarget);
-
-		//Ok, now we can create the sub paths in this folder for each of the logical commands.
-
-		final AtomicInteger origLineCounter = new AtomicInteger(1);
-		final AtomicInteger newLineCounter = new AtomicInteger(1);
-		final DecimalFormat dmcf = new DecimalFormat("0000");
-		final AtomicInteger fileCounter = new AtomicInteger(1);
-
-		Path lastTargetFile = sqlFileTarget.resolve(dmcf.format(fileCounter.get()) + ".sql");
-		BufferedWriter targetOut = null;
-
-		try(final BufferedReader inSQL = Files.newBufferedReader(sqlFileP))
+	public OptionalInt findOriginalFileNumber(Path commandFile, int subNumber)
+	{
+		for (Map.Entry<Integer, TargetLex> e : linesLex.entrySet())
 		{
-			targetOut = Files.newBufferedWriter(lastTargetFile);
-			String line = null;
-			while((line = inSQL.readLine()) != null)
+			final Integer lineNumber = e.getKey();
+			final TargetLex targetLex = e.getValue();
+
+			if(targetLex.targetFile.equals(commandFile) && subNumber == targetLex.lineNumber)
 			{
-				origLineCounter.incrementAndGet();
-
-				//Ok, now check if this line constitutes the end of a command.
-				boolean isEndOfCommand = containsEndOfCommandMarker(line);
-
-
+				return OptionalInt.of(lineNumber);
 			}
 
+			if(targetLex.secondaryTargetFile.isPresent())
+			{
+				if(targetLex.secondaryTargetFile.get().equals(commandFile) && subNumber == targetLex.secondaryLineNumber.getAsInt())
+				{
+					return OptionalInt.of(lineNumber);
+				}
+			}
 		}
-		catch(IOException ioe)
-		{
-			String msg = "Unable to read the input SQL file : " + sqlFileP + " - got the exception : " + ioe;
-			logger.error(msg, ioe);
-		}
-
-
-		//Create the output directory
-		//sqlFile.relativize(rootDirectory)
-
-		//BufferedReader sqlIn = Files.newBufferedReader(sqlFile);
-
-		
-
-		return null;
+		return OptionalInt.empty();
 	}
 
-	/**
-	 * Checks if this line indicates an end of line marker
-	 * @param line
-	 * @return
-	 */
-	static boolean containsEndOfCommandMarker(final String line)
+	public List<StatementFileParsed> getFilesParsed()
 	{
-		String lineTrimmed = line.trim();
-		if(lineTrimmed.endsWith(CMD_END_MARKER))
-		{
-			return true;
-		}
-		if(lineTrimmed.equals("")) return false;
-
-		//Ok, determine if the command marker exists at all
-		if(lineTrimmed.contains(CMD_END_MARKER) == false) return false;
-
-		//See if the marker is commented out.
-		int commentIndex = lineTrimmed.indexOf(COMMENT_MARKER);
-		if(commentIndex != -1)
-		{
-			String lineExcludingComment = line.substring(0, commentIndex);
-			return containsEndOfCommandMarker(lineExcludingComment);
-		}
-
-		//Ok, no comments - but it contains a ';' - so lets see if it is inside a quote
-
-		return false;
-
+		return parseds;
 	}
 
-	/**
-	 * Deletes and recreates the directory.
-	 * @param sqlFileTarget
-	 */
-	private static void deleteAndRecreateTargetDirectory(Path sqlFileTarget)
+	private StatementFileParsed parsed(final Path commandFile)
 	{
 		try
 		{
-			if(Files.exists(sqlFileTarget) == true && Files.isDirectory(sqlFileTarget) == false)
+			final String sqlContent = new String(Files.readAllBytes(commandFile));
+			if(sqlContent.trim().equals(""))
 			{
-				Files.delete(sqlFileTarget);
-				Files.createDirectories(sqlFileTarget);
-				return;
+				return new StatementFileParsed(true, this, commandFile, Optional.empty(), Optional.empty(), Optional.empty());
 			}
-			if(Files.exists(sqlFileTarget) == true && Files.isDirectory(sqlFileTarget) == true)
+
+			try
 			{
-				Files.walk(sqlFileTarget)
-						.sorted(Comparator.reverseOrder())
-						.map(Path::toFile)
-						.forEach(File::delete);
-				Files.createDirectories(sqlFileTarget);
-				return;
+				StatementBase stmtBase = Parser.parse(sqlContent);
+				return new StatementFileParsed(false, this, commandFile, Optional.empty(), Optional.of(stmtBase), Optional.empty());
 			}
-			Files.createDirectories(sqlFileTarget);
+			catch(AnalysisException anle)
+			{
+				String msg = anle.getMessage();
+				return new StatementFileParsed(false, this, commandFile, Optional.empty(), Optional.empty(), Optional.of(anle));
+			}
 		}
-		catch(IOException e)
+		catch(Exception e)
 		{
-			throw new ImpalaQueryException("Unable to delete and recreate the file/directory - " + sqlFileTarget + " - got the exception : " + e);
+			return new StatementFileParsed(false,this, commandFile, Optional.of(e), Optional.empty(), Optional.empty());
 		}
 
-
 	}
 
-	private final Path sqlFile;
-	private final List<Path> commandFiles;
-	private final Map<Integer, TargetLex> linesLex;
-
-	private StatementFile(Path sqlFile)
+	public Path getSqlFile()
 	{
-		this.sqlFile = sqlFile;
-		this.commandFiles = new ArrayList<>();
-		this.linesLex = new TreeMap<>();
+		return sqlFile;
 	}
-}
 
-class EndOfCommandMarker
-{
-	//public static final EndOfCommandMarker FALSE = n
-
-	/*
-	private final boolean isMarker;
-	private final Optional<String> contentBefore;
-	private final Optional<String> contentAfter;
-	*/
-}
-
-
-class TargetLex
-{
-	public static final TargetLex BLANK = new TargetLex(-1, null);
-
-	private final int lineNumber;
-	private final Path targetFile;
-
-	TargetLex(int lineNumber, Path targetFile)
+	public List<Path> getCommandFiles()
 	{
-		this.lineNumber = lineNumber;
-		this.targetFile = targetFile;
+		return commandFiles;
 	}
+
+	public SortedMap<Integer, TargetLex> getLinesLex()
+	{
+		return linesLex;
+	}
+
+	@Override public boolean equals(Object o)
+	{
+		if (this == o)
+			return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
+		StatementFile that = (StatementFile) o;
+		return Objects.equals(sqlFile, that.sqlFile);
+	}
+
+	@Override public int hashCode()
+	{
+		return Objects.hash(sqlFile);
+	}
+
+	public StatementFiles getParent()
+	{
+		return parent;
+	}
+
+
 }
 

@@ -32,8 +32,8 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.impala</groupId>
-      <artifactId>impala-frontend</artifactId>
+      <groupId>uk.co.devworx</groupId>
+      <artifactId>impala-frontend-uber</artifactId>
       <version>4.0.0-SNAPSHOT</version>
     </dependency>
 

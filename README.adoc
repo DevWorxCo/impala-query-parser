@@ -21,6 +21,38 @@ git checkout tags/3.4.0
 
 ```
 
+=== Updating the Source
+
+In order to produce a package that will be appropriate for our purposes, we need to make a few small amendments to the code base prior to building a library
+
+==== Remove the `impala-frontend` Native Dependency
+
+The SQL parser for Impala resides in the `impala-frontend` project. By default, it has a dependency on the native (*.so) libraries produced as part of the build. This is somewhat inconvenient (and not required for this use-case) as it bloats up the binaries and makes it difficult to run just the parser as part of the continuous integration process.
+
+To remove this dependency, simply comment out the following line:
+
+```
+reservedWords.removeAll(BuiltinsDb.getInstance().getAllFunctions().keySet());
+```
+
+from the `impala/fe/src/main/jflex/sql-scanner.flex` file.
+
+==== Add a package to produce an Uber Jar
+
+An uber (or all in one) Jar is the most convenient way of invoking the Impala query parser. In order to do so, you need to add a module directory to the source tree at `impala/fe-package` that contains this link:docs-assets/pom.xml[pom.xml file]
+
+The module then needs to be added to the `impala/java/pom.xml` file:
+
+```
+...
+    <module>../fe</module>
+    <module>../fe-package</module>
+    <module>query-event-hook-api</module>
+...
+```
+
+This will ensure the creation of the `impala/fe-package/target/impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar` file once the build has completed. This is the file you need in order to invoke the parsing library.
+
 === Building the Source
 
 NOTE: These instructions have been tested with Ubuntu 18.04. You may need to create a VM that has this exact version.
@@ -34,29 +66,20 @@ export IMPALA_HOME=`pwd`
 ./bin/bootstrap_development.sh
 ```
 
-And then after the first build:
-
-```
-# Rebuild both backend and frontend
-${IMPALA_HOME}/buildall.sh -skiptests -noclean
-```
-
-Or even quicker - if you just wish to do the Java:
+And then after the first build, just do the Java:
 
 ```
 # Incremental builds
 source ${IMPALA_HOME}/bin/impala-config.sh
 # Optional: Build the Java-side frontend only
-make -j$IMPALA_BUILD_THREADS java
+make -j$1 java
 ```
+
 
 Publish to the local maven repository:
 
 ```
-
-mvn org.apache.maven.plugins:maven-install-plugin:2.5.2:install-file -Dfile./Impala-Build/impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar
-
+mvn install:install-file -Dfile=/home/jsteenkamp/Desktop/Impala-Build/impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar -DgroupId=uk.co.devworx -DartifactId=impala-frontend-uber -Dversion=4.0.0-SNAPSHOT -Dpackaging=jar
 ```
-
 
 
