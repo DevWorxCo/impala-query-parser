@@ -12,6 +12,8 @@ CREATE VIEW stock_prices_reference_data_view AS
             rf.creation_date,
 
             sp.price,
+            rank() over(order by sp.price desc) as price_rank,
+            avg(sp.price) as avg_price,
             sp.observation
 
     FROM stock_prices sp
