@@ -44,7 +44,24 @@
       <scope>test</scope>
     </dependency>
 
-
   </dependencies>
+
+  <repositories>
+
+    <repository>
+      <id>maven-central-repo</id>
+      <name>Central Maven Repository</name>
+      <url>https://repo.maven.apache.org/maven2/</url>
+    </repository>
+
+  </repositories>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub OWNER Apache Maven Packages</name>
+      <url>https://maven.pkg.github.com/DevWorxCo/impala-query-parser</url>
+    </repository>
+  </distributionManagement>
 
 </project>

@@ -1,4 +1,4 @@
-name: Spear Publish Packages 1.0-SNAPSHOT
+name: Impala Build and Publish Packages
 
 on:
   push:
@@ -11,14 +11,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up JDK 11
-      uses: actions/setup-java@v1
-      with:
-        java-version: 11
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
 
-#    - name: Maven Build
-#      run: mvn --file pom.xml clean install
+      - name: Get impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar
+        run: wget https://www.devworx.co.uk/assets/jars/impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar
 
-                
+      - name: Publish Impala Frontend to Local Repository
+        run: mvn install:install-file -Dfile=impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar -DgroupId=uk.co.devworx -DartifactId=impala-frontend-uber -Dversion=4.0.0-SNAPSHOT -Dpackaging=jar
+
+      - name: Build with Maven
+        run: mvn -B clean install --file pom.xml
+
+      - name: Publish to GitHub Packages Apache Maven
+        run: mvn deploy -DskipTests=true
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # GITHUB_TOKEN is the default env for the password
