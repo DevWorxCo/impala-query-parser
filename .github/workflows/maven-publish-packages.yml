@@ -34,3 +34,5 @@ jobs:
 
       - name: Deploy Impala Frontend to GitHub Repository
         run: mvn deploy:deploy-file -Durl="https://maven.pkg.github.com/DevWorxCo/impala-query-parser" -DrepositoryId=github -Dfile=impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar -DgroupId=uk.co.devworx -DartifactId=impala-frontend-uber -Dversion=4.0.0-SNAPSHOT -Dpackaging=jar
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # GITHUB_TOKEN is the default env for the password
