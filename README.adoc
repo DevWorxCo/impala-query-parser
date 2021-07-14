@@ -1,5 +1,9 @@
 = Query Parser for Apache Impala
 
+image::https://github.com/DevWorxCo/impala-query-parser/actions/workflows/maven-publish-packages.yml/badge.svg
+
+[![Impala Build and Publish Packages](https://github.com/DevWorxCo/impala-query-parser/actions/workflows/maven-publish-packages.yml/badge.svg)](https://github.com/DevWorxCo/impala-query-parser/actions/workflows/maven-publish-packages.yml)
+
 This project contains instructions, and some helper libraries to enable the parsing of SQL in Apache Impala's dialect as part of the continuous integration build pipeline. In general, catching common mistakes early on in the development cycle (as opposed to waiting for a deployment) has significant productivity benefits.
 
 == WARNING

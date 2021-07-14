@@ -9,7 +9,30 @@
   <version>1.0-SNAPSHOT</version>
 
   <name>impala-query-parser</name>
+  <description>Contains instructions and helper libraries to allow you to parse SQL scripts in Apache Impala's dialect as part of your CI pipeline. Catching common mistakes / typos early in the development cycle has some significant productivity benefits.</description>
   <url>https://github.com/DevWorxCo/impala-query-parser</url>
+
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Jack Steenkamp</name>
+      <email>jack@devworx.co.uk</email>
+      <organization>DevWorx</organization>
+      <organizationUrl>https://www.devworx.co.uk/</organizationUrl>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git://github.com/DevWorxCo/impala-query-parser.git</connection>
+    <developerConnection>scm:git:ssh://github.com:DevWorxCo/impala-query-parser.git</developerConnection>
+    <url>https://github.com/DevWorxCo/impala-query-parser/tree/main</url>
+  </scm>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -46,16 +69,6 @@
 
   </dependencies>
 
-  <repositories>
-
-    <repository>
-      <id>maven-central-repo</id>
-      <name>Central Maven Repository</name>
-      <url>https://repo.maven.apache.org/maven2/</url>
-    </repository>
-
-  </repositories>
-
   <distributionManagement>
     <repository>
       <id>github</id>
@@ -63,5 +76,6 @@
       <url>https://maven.pkg.github.com/DevWorxCo/impala-query-parser</url>
     </repository>
   </distributionManagement>
+
 
 </project>
