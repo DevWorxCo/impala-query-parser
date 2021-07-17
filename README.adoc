@@ -81,7 +81,7 @@ make -j$1 java
 Publish to the local maven repository:
 
 ```
-mvn install:install-file -Dfile=/home/jsteenkamp/Desktop/Impala-Build/impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar -DgroupId=uk.co.devworx -DartifactId=impala-frontend-uber -Dversion=4.0.0-SNAPSHOT -Dpackaging=jar
+mvn install:install-file -Dfile=/home/jsteenkamp/Desktop/Impala-Build/impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar -DgroupId=uk.co.devworx -DartifactId=impala-frontend-uber -Dversion=1.0-SNAPSHOT -Dpackaging=jar
 ```
 
 
