@@ -99,7 +99,7 @@ public class StatementFiles
 		final List<Path> sqlFiles = new ArrayList<>();
 		try
 		{
-			Files.walkFileTree(rootDirectory, new SimpleFileVisitor<>()
+			Files.walkFileTree(rootDirectory, new SimpleFileVisitor<Path>()
 			{
 				@Override public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException
 				{
