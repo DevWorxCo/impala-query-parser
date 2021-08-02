@@ -9,10 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -41,7 +38,22 @@ public class StatementFiles
 	 */
 	public static StatementFiles create(final Path rootDirectory, final Path workingDirectoryRoot) throws ImpalaQueryException
 	{
-		return new StatementFiles(rootDirectory, workingDirectoryRoot);
+		return StatementFiles.create(rootDirectory, workingDirectoryRoot, null);
+	}
+
+	/**
+	 * Scans the supplied file system and creates
+	 * an instance of the StatementFiles object.
+	 * @param rootDirectory
+	 * @param workingDirectoryRoot
+	 * @param filePreProcessor - an optional file preprocessor that can be passed in to handle file value replacements.
+	 * @return
+	 */
+	public static StatementFiles create(final Path rootDirectory, final Path workingDirectoryRoot, final StatementFilePreProcessor filePreProcessor) throws ImpalaQueryException
+	{
+		Objects.requireNonNull(rootDirectory, "You cannot specify a null root directory");
+		Objects.requireNonNull(workingDirectoryRoot, "You cannot specify a null workingDirectoryRoot directory");
+		return new StatementFiles(rootDirectory, workingDirectoryRoot, Optional.ofNullable(filePreProcessor));
 	}
 
 	private final Path rootDirectory;
@@ -52,10 +64,11 @@ public class StatementFiles
 
 	private final List<StatementFile> statementFiles;
 
-	private StatementFiles(Path rootDirectory, Path workingDirectoryRoot) throws ImpalaQueryException
+	private final Optional<StatementFilePreProcessor> filePreProcessor;
+
+	private StatementFiles(Path rootDirectory, Path workingDirectoryRoot, Optional<StatementFilePreProcessor> filePreProcessor) throws ImpalaQueryException
 	{
-		Objects.requireNonNull(rootDirectory, "Root directory cannot be null");
-		Objects.requireNonNull(workingDirectoryRoot, "Working directory cannot be null");
+		Objects.requireNonNull(filePreProcessor, "filePreProcessor cannot be null");
 
 		if(Files.isDirectory(rootDirectory) == false)
 		{
@@ -84,13 +97,14 @@ public class StatementFiles
 
 		this.rootDirectory = rootDirectory;
 		this.workingDirectoryRoot = workingDirectoryRoot;
+		this.filePreProcessor = filePreProcessor;
 		allSQLFiles = _buildAllSQLFilesList(rootDirectory);
 		statementFiles = allSQLFiles.stream().map(sqlFile -> _buildStatementFile(sqlFile, rootDirectory, workingDirectoryRoot)).collect(Collectors.toList());
 	}
 
 	private StatementFile _buildStatementFile(Path sqlFile, Path rootDirectory, Path workingDirectoryRoot) throws ImpalaQueryException
 	{
-		return StatementFileFactory.create(this, sqlFile, rootDirectory, workingDirectoryRoot);
+		return StatementFileFactory.create(this, sqlFile, rootDirectory, workingDirectoryRoot, filePreProcessor);
 	}
 
 	private static List<Path> _buildAllSQLFilesList(Path rootDirectory)

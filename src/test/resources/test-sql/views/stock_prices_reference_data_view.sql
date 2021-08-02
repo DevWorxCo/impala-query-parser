@@ -1,8 +1,8 @@
 
 
-DROP VIEW IF EXISTS stock_prices_reference_data_view;
+DROP VIEW IF EXISTS ${DATABASE}.stock_prices_reference_data_view;
 
-CREATE VIEW stock_prices_reference_data_view AS
+CREATE VIEW ${DATABASE}.stock_prices_reference_data_view AS
 
     SELECT  rf.internal_id,
             rf.ticker,
@@ -16,11 +16,11 @@ CREATE VIEW stock_prices_reference_data_view AS
             avg(sp.price) as avg_price,
             sp.observation
 
-    FROM stock_prices sp
-    INNER JOIN stock_reference_data rf
+    FROM ${DATABASE}.stock_prices sp
+    INNER JOIN ${DATABASE}.stock_reference_data rf
     ON sp.internal_id = rf.internal_id
 ;
 
-refresh stock_prices_reference_data_view;
+refresh ${DATABASE}.stock_prices_reference_data_view;
 
 

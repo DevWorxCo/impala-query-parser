@@ -1,10 +1,10 @@
 
 
-DROP TABLE IF EXISTS stock_prices;
+DROP TABLE IF EXISTS ${DATABASE}.stock_prices;
 
 -- Some stock Prices
 --
-CREATE TABLE stock_prices
+CREATE TABLE ${DATABASE}.stock_prices
 (
     internal_id                 STRING COMMENT 'The stock internal id',
     price                       DOUBLE,
@@ -12,8 +12,8 @@ CREATE TABLE stock_prices
 )
     STORED AS PARQUET tblproperties ("parquet.compression"="SNAPPY");
 
-compute incremental stats stock_reference_data;
+compute incremental stats ${DATABASE}.stock_reference_data;
 
-refresh stock_reference_data
+refresh ${DATABASE}.stock_reference_data
 ;
 

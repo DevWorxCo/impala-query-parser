@@ -27,7 +27,7 @@ public class StatementFilesTest
 	@Test
 	public void testParsingOfStatementFiles() throws Exception
 	{
-		final StatementFiles stmtFiles = StatementFiles.create(INPUT_DIR, WORKING_DIR);
+		final StatementFiles stmtFiles = StatementFiles.create(INPUT_DIR, WORKING_DIR, new VariableReplacer());
 		final List<StatementFile> stmts = stmtFiles.getStatementFiles();
 
 		Assert.assertEquals(3,stmts.size());

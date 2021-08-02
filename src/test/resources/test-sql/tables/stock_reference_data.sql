@@ -1,7 +1,7 @@
 
-DROP TABLE IF EXISTS stock_reference_data;
+DROP TABLE IF EXISTS ${DATABASE}.stock_reference_data;
 
-CREATE TABLE stock_reference_data
+CREATE TABLE ${DATABASE}.stock_reference_data
 (
     internal_id                 STRING,
     ticker                      STRING,
@@ -12,8 +12,8 @@ CREATE TABLE stock_reference_data
 )
 STORED AS PARQUET tblproperties ("parquet.compression"="SNAPPY");
 
-compute incremental stats stock_reference_data;
+compute incremental stats ${DATABASE}.stock_reference_data;
 
-refresh stock_reference_data
+refresh ${DATABASE}.stock_reference_data
 ;
 

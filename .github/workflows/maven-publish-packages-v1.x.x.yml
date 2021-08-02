@@ -22,10 +22,10 @@ jobs:
         run: wget https://www.devworx.co.uk/assets/jars/impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar
 
       - name: Publish Impala Frontend to Local Repository
-        run: mvn install:install-file -Dfile=impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar -DgroupId=uk.co.devworx -DartifactId=impala-frontend-uber -Dversion=1.0.4 -Dpackaging=jar
+        run: mvn install:install-file -Dfile=impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar -DgroupId=uk.co.devworx -DartifactId=impala-frontend-uber -Dversion=1.0.5 -Dpackaging=jar
 
       - name: Maven Set Versions
-        run: mvn -B versions:set -DnewVersion=1.0.4 --file pom.xml
+        run: mvn -B versions:set -DnewVersion=1.0.5 --file pom.xml
 
       - name: Publish to GitHub Packages Apache Maven
         run: mvn deploy -DskipTests=true
@@ -33,6 +33,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }} # GITHUB_TOKEN is the default env for the password
 
       - name: Deploy Impala Frontend to GitHub Repository
-        run: mvn deploy:deploy-file -Durl="https://maven.pkg.github.com/DevWorxCo/impala-query-parser" -DrepositoryId=github -Dfile=impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar -DgroupId=uk.co.devworx -DartifactId=impala-frontend-uber -Dversion=1.0.4 -Dpackaging=jar
+        run: mvn deploy:deploy-file -Durl="https://maven.pkg.github.com/DevWorxCo/impala-query-parser" -DrepositoryId=github -Dfile=impala-frontend-uber-4.0.0-SNAPSHOT-jar-with-dependencies.jar -DgroupId=uk.co.devworx -DartifactId=impala-frontend-uber -Dversion=1.0.5 -Dpackaging=jar
         env:
           GITHUB_TOKEN: ${{ github.token }} # GITHUB_TOKEN is the default env for the password

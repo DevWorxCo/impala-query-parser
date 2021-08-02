@@ -26,7 +26,7 @@ public class StatementFilesCommentExtractTest
 	@Test
 	public void testExtractComments() throws Exception
 	{
-		final StatementFiles stmtFiles = StatementFiles.create(INPUT_DIR, WORKING_DIR);
+		final StatementFiles stmtFiles = StatementFiles.create(INPUT_DIR, WORKING_DIR, new VariableReplacer());
 		final List<StatementFile> stmts = stmtFiles.getStatementFiles();
 
 		for (StatementFile stmtFl : stmts)

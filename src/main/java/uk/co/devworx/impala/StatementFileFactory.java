@@ -30,17 +30,17 @@ public class StatementFileFactory
 
 	private StatementFileFactory() {}
 
-
 	/**
 	 * Creates a statements file
 	 *
 	 */
 	public static StatementFile create(	   final StatementFiles parent,
-										   final Path sqlFileP,
+										   final Path sqlInputFileP,
 										   final Path rootDirectoryP,
-										   final Path workingDirectoryRootP) throws ImpalaQueryException
+										   final Path workingDirectoryRootP,
+										   final Optional<StatementFilePreProcessor> filePreProcessorP) throws ImpalaQueryException
 	{
-		final Path sqlFileRelative = rootDirectoryP.toAbsolutePath().relativize(sqlFileP.toAbsolutePath());
+		final Path sqlFileRelative = rootDirectoryP.toAbsolutePath().relativize(sqlInputFileP.toAbsolutePath());
 		final Path sqlFileTarget = workingDirectoryRootP.resolve(sqlFileRelative);
 
 		deleteAndRecreateTargetDirectory(sqlFileTarget);
@@ -61,7 +61,11 @@ public class StatementFileFactory
 
 		commandFiles.add(lastTargetFile);
 
-		try(final BufferedReader inSQL = Files.newBufferedReader(sqlFileP))
+		//filePreProcessorP
+
+		final Path processedSqlFile = getProcessedSQLFile(sqlInputFileP, filePreProcessorP, sqlFileTarget);
+
+		try(final BufferedReader inSQL = Files.newBufferedReader(processedSqlFile))
 		{
 			targetOut = Files.newBufferedWriter(lastTargetFile);
 			String line = null;
@@ -70,7 +74,7 @@ public class StatementFileFactory
 			{
 				final int origLineNumber = origLineCounter.incrementAndGet();
 
-				final EndOfCommandMarker eocMarker = parseEndOfCommandMarker(line, origLineNumber, sqlFileP);
+				final EndOfCommandMarker eocMarker = parseEndOfCommandMarker(line, origLineNumber, sqlInputFileP);
 				if(eocMarker.isMarker == false)
 				{
 					targetOut.write(line);
@@ -154,13 +158,26 @@ public class StatementFileFactory
 		}
 		catch(IOException ioe)
 		{
-			String msg = "Unable to read the input SQL file : " + sqlFileP + " - got the exception : " + ioe;
+			String msg = "Unable to read the input SQL file : " + sqlInputFileP + " - got the exception : " + ioe;
 			logger.error(msg, ioe);
 			throw new ImpalaQueryException(msg, ioe);
 		}
 
-		return new StatementFile(parent, sqlFileP, commandFiles, linesLex);
+		return new StatementFile(parent, sqlInputFileP, commandFiles, linesLex);
 	}
+
+	private static Path getProcessedSQLFile(final Path sqlInputFile,
+											final Optional<StatementFilePreProcessor> filePreProcessor,
+											final Path sqlFileTargetDir)
+	{
+		if(filePreProcessor.isPresent() == false) return sqlInputFile;
+		final StatementFilePreProcessor processor = filePreProcessor.get();
+		final Path sqlInputFileProcessed = sqlFileTargetDir.resolve(sqlInputFile.getFileName() + ".processed");
+		processor.preProcess(sqlInputFile, sqlInputFileProcessed);
+		return sqlInputFileProcessed;
+	}
+
+
 
 	/**
 	 * Creates the end of command marker for this line
