@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
@@ -20,13 +21,21 @@ public class StatementFileFactory
 {
 	static final Logger logger = LogManager.getLogger(StatementFileFactory.class);
 
-	public static final String CMD_END_MARKER = ";";
+	public static final char CMD_END_MARKER = ';';
+	public static final String CMD_END_MARKER_STR = String.valueOf(CMD_END_MARKER);
 	public static final String COMMENT_MARKER = "--";
 
 	public static final String DOUBLE_QUOTE_MARKER = "\"";
-	public static final String SINGLE_QUOTE_MARKER = "'";
+	public static final char SINGLE_QUOTE_MARKER = '\'';
+	public static final String SINGLE_QUOTE_MARKER_STR = String.valueOf(SINGLE_QUOTE_MARKER);
 	public static final String DOUBLE_QUOTE_ESCAPE = "\\\"";
 	public static final String SINGLE_QUOTE_ESCAPE = "\\'";
+
+	static final char ESCAPED_QUOTE_SUBSTITUTE = '☺';
+	static final String ESCAPED_QUOTE_SUBSTITUTE_STR = String.valueOf(ESCAPED_QUOTE_SUBSTITUTE);
+	static final String ESCAPED_DOUBLE_QUOTE_SUBSTITUTE = "☹";
+	static final char CMD_NOT_AN_END_MARKER_SUBSTITUTE = '✌';
+	static final String CMD_NOT_AN_END_MARKER_SUBSTITUTE_STR = String.valueOf(CMD_NOT_AN_END_MARKER_SUBSTITUTE);
 
 	private StatementFileFactory() {}
 
@@ -77,7 +86,7 @@ public class StatementFileFactory
 				final EndOfCommandMarker eocMarker = parseEndOfCommandMarker(line, origLineNumber, sqlInputFileP);
 				if(eocMarker.isMarker == false)
 				{
-					targetOut.write(line);
+					targetOut.write(handleEOCReplace(line));
 					targetOut.newLine();
 
 					int newLineNumber = newLineCounter.incrementAndGet();
@@ -91,7 +100,7 @@ public class StatementFileFactory
 
 					if(eocMarker.contentBefore.isPresent() && eocMarker.contentAfter.isPresent() )
 					{
-						targetOut.write(eocMarker.contentBefore.get());
+						targetOut.write(handleEOCReplace(eocMarker.contentBefore.get()));
 						targetOut.newLine();
 						targetOut.close();
 
@@ -105,14 +114,14 @@ public class StatementFileFactory
 						commandFiles.add(lastTargetFile);
 						targetOut = Files.newBufferedWriter(lastTargetFile);
 
-						targetOut.write(eocMarker.contentAfter.get());
+						targetOut.write(handleEOCReplace(eocMarker.contentAfter.get()));
 						targetOut.newLine();
 
 						linesLex.put(origLineNumber, new TargetLex(lastNewLine, lastFileBefore, firstNewLine, lastTargetFile));
 					}
 					else if(eocMarker.contentBefore.isPresent() && !eocMarker.contentAfter.isPresent() )
 					{
-						targetOut.write(eocMarker.contentBefore.get());
+						targetOut.write(handleEOCReplace(eocMarker.contentBefore.get()));
 						targetOut.newLine();
 						targetOut.close();
 
@@ -137,7 +146,7 @@ public class StatementFileFactory
 						commandFiles.add(lastTargetFile);
 						targetOut = Files.newBufferedWriter(lastTargetFile);
 
-						targetOut.write(eocMarker.contentAfter.get());
+						targetOut.write(handleEOCReplace(eocMarker.contentAfter.get()));
 						targetOut.newLine();
 
 						linesLex.put(origLineNumber, new TargetLex(firstNewLine, lastTargetFile));
@@ -166,15 +175,137 @@ public class StatementFileFactory
 		return new StatementFile(parent, sqlInputFileP, commandFiles, linesLex);
 	}
 
+	/**
+	 * Take care of the substitute replacement (if applicable).
+	 * @param line
+	 * @return
+	 */
+	private static String handleEOCReplace(final String line)
+	{
+		if(line.contains(CMD_NOT_AN_END_MARKER_SUBSTITUTE_STR))
+		{
+			return line.replace(CMD_NOT_AN_END_MARKER_SUBSTITUTE_STR, CMD_END_MARKER_STR);
+		}
+		return line;
+	}
+
 	private static Path getProcessedSQLFile(final Path sqlInputFile,
 											final Optional<StatementFilePreProcessor> filePreProcessor,
 											final Path sqlFileTargetDir)
 	{
-		if(filePreProcessor.isPresent() == false) return sqlInputFile;
+		if(filePreProcessor.isPresent() == false) return substituteOutNotCommandMarkers(sqlInputFile, sqlFileTargetDir);
 		final StatementFilePreProcessor processor = filePreProcessor.get();
 		final Path sqlInputFileProcessed = sqlFileTargetDir.resolve(sqlInputFile.getFileName() + ".processed");
 		processor.preProcess(sqlInputFile, sqlInputFileProcessed);
-		return sqlInputFileProcessed;
+		return substituteOutNotCommandMarkers(sqlInputFileProcessed, sqlFileTargetDir);
+	}
+
+
+
+	/**
+	 * Make sure we susbstitute out all the markers that are contained within quotes that are not escaped.
+	 * @param sqlInputFile
+	 * @param sqlFileTargetDir
+	 * @return
+	 */
+	static Path substituteOutNotCommandMarkers(final Path sqlInputFile,
+											   final Path sqlFileTargetDir)
+	{
+		try
+		{
+			final Path sqlInputFileSubstituted = sqlFileTargetDir.resolve(sqlInputFile.getFileName() + ".substituted");
+			String sqlFile = new String(Files.readAllBytes(sqlInputFile), StandardCharsets.UTF_8);
+			String sqlFileSubbed = substituteOutNotCommandMarkers(sqlFile);
+
+			Files.write(sqlInputFileSubstituted, sqlFileSubbed.getBytes(StandardCharsets.UTF_8));
+			return sqlInputFileSubstituted;
+		}
+		catch(IOException ioe)
+		{
+			throw new RuntimeException("Unable to read and create substitutes for the SQL Input File : " + sqlInputFile + " | Encountered : " + ioe, ioe);
+		}
+	}
+
+	static String substituteOutNotCommandMarkers(final String inputSQL)
+	{
+		class QuotedSegment
+		{
+			public final int quoteStart;
+			public final int quoteEnd;
+
+			private QuotedSegment(int quoteStart, int quoteEnd)
+			{
+				this.quoteStart = quoteStart;
+				this.quoteEnd = quoteEnd;
+			}
+
+			@Override public String toString()
+			{
+				return "QuotedSegment{" + "quoteStart=" + quoteStart + ", quoteEnd=" + quoteEnd + '}';
+			}
+
+			public boolean isContainedWithin(int index)
+			{
+				return index > quoteStart && index < quoteEnd;
+			}
+		}
+
+		String sqlFilePost = inputSQL.replace(SINGLE_QUOTE_ESCAPE, ESCAPED_QUOTE_SUBSTITUTE_STR);
+		final StringBuilder sqlFilePostBuf = new StringBuilder(sqlFilePost);
+
+		final List<QuotedSegment> quotedSegments = new ArrayList<>();
+		final List<Integer> commandEndLocations = new ArrayList<>();
+
+		//Now parse the segments.
+
+		int quoteStart = -1;
+		int quoteEnd = -1;
+
+		for (int i = 0; i < sqlFilePost.length(); i++)
+		{
+			char ch = sqlFilePost.charAt(i);
+			if(ch == CMD_END_MARKER)
+			{
+				commandEndLocations.add(i);
+				continue;
+			}
+
+			if(ch == SINGLE_QUOTE_MARKER && quoteStart == -1)
+			{
+				quoteStart = i;
+				continue;
+			}
+
+			if(ch == SINGLE_QUOTE_MARKER && quoteStart != -1)
+			{
+				quoteEnd = i;
+				quotedSegments.add(new QuotedSegment(quoteStart, quoteEnd));
+				quoteStart = -1;
+				quoteEnd = -1;
+				continue;
+			}
+		}
+
+		if(quoteStart != -1) //Finish it off
+		{
+			quotedSegments.add(new QuotedSegment(quoteStart, sqlFilePost.length()-1));
+		}
+
+		//Ok, now replace all the command markers that are inside quotes.
+		for(Integer index : commandEndLocations)
+		{
+			for(QuotedSegment segment : quotedSegments)
+			{
+				if(segment.isContainedWithin(index))
+				{
+					sqlFilePostBuf.setCharAt(index, CMD_NOT_AN_END_MARKER_SUBSTITUTE);
+				}
+			}
+		}
+
+		String sqlFilePostBuffer = sqlFilePostBuf.toString().replace(ESCAPED_QUOTE_SUBSTITUTE_STR, SINGLE_QUOTE_ESCAPE);
+		return sqlFilePostBuffer;
+
 	}
 
 
@@ -188,7 +319,7 @@ public class StatementFileFactory
 	 */
 	static EndOfCommandMarker parseEndOfCommandMarker(final String line, int lineNumber, Path sqlFileP) throws ImpalaQueryException
 	{
-		if(line.contains(CMD_END_MARKER) == false)
+		if(line.contains(CMD_END_MARKER_STR) == false)
 		{
 			return EndOfCommandMarker.EMPTY;
 		}
@@ -210,8 +341,8 @@ public class StatementFileFactory
 
 	static List<StringSegment> parseSegments(final String lineP)
 	{
-		final String line = lineP.replace(DOUBLE_QUOTE_ESCAPE, "X")
-				.replace(SINGLE_QUOTE_MARKER, "Y"); //Make sure we don't have to deal with quotes.
+		final String line = lineP.replace(DOUBLE_QUOTE_ESCAPE, ESCAPED_DOUBLE_QUOTE_SUBSTITUTE)
+								 .replace(SINGLE_QUOTE_MARKER_STR, ESCAPED_QUOTE_SUBSTITUTE_STR); //Make sure we don't have to deal with quotes.
 
 		final List<StringSegment> segments = new ArrayList<>();
 		int index = 0;
@@ -292,7 +423,7 @@ public class StatementFileFactory
 		int count = 0;
 		for (int i = 0; i < chrs.length; i++)
 		{
-			if(chrs[i] == CMD_END_MARKER.charAt(0)) count++;
+			if(chrs[i] == CMD_END_MARKER) count++;
 		}
 		return count;
 	}

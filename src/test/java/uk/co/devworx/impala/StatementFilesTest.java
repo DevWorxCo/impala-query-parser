@@ -41,7 +41,11 @@ public class StatementFilesTest
 			for (StatementFileParsed sfp : filesParsed)
 			{
 				if(sfp.isSuccessful()) successes++;
-				else failures++;
+				else
+				{
+					logger.info(sfp.getFailureSummary());
+					failures++;
+				}
 			}
 		}
 

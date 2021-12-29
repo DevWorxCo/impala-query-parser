@@ -40,7 +40,7 @@ public class StringSegmentParseTest
 	@Test
 	public void test04() throws Exception
 	{
-		List<StringSegment> segments = testStringParsing("Some Content \"Quoted ; Items\" And some more Text at the end -- With Comment ;", "test03");
+		List<StringSegment> segments = testStringParsing("Some Content \"Quoted ; Items\" And some more Text at the end -- With Comment ;", "test04");
 		Assert.assertNotNull(segments);
 		Assert.assertFalse(StringSegment.hasEndOfCommandMarker(segments));
 	}
@@ -48,7 +48,7 @@ public class StringSegmentParseTest
 	@Test
 	public void test05() throws Exception
 	{
-		List<StringSegment> segments = testStringParsing("Some Content \"Quoted \\\"; Items\" And some more Text at the end -- With Comment ;", "test03");
+		List<StringSegment> segments = testStringParsing("Some Content \"Quoted \\\"; Items\" And some more Text at the end -- With Comment ;", "test05");
 		Assert.assertNotNull(segments);
 		Assert.assertFalse(StringSegment.hasEndOfCommandMarker(segments));
 	}
