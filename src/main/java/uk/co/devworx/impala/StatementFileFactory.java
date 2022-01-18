@@ -23,7 +23,10 @@ public class StatementFileFactory
 
 	public static final char CMD_END_MARKER = ';';
 	public static final String CMD_END_MARKER_STR = String.valueOf(CMD_END_MARKER);
-	public static final String COMMENT_MARKER = "--";
+	public static final char COMMENT_MARKER_CHAR = '-';
+	public static final String COMMENT_MARKER = "" + COMMENT_MARKER_CHAR + COMMENT_MARKER_CHAR;
+
+	public static final char NEW_LINE_CHAR = '\n';
 
 	public static final String DOUBLE_QUOTE_MARKER = "\"";
 	public static final char SINGLE_QUOTE_MARKER = '\'';
@@ -261,16 +264,30 @@ public class StatementFileFactory
 		int quoteStart = -1;
 		int quoteEnd = -1;
 
+		boolean insideComment = false;
+
 		for (int i = 0; i < sqlFilePost.length(); i++)
 		{
-			char ch = sqlFilePost.charAt(i);
-			if(ch == CMD_END_MARKER)
+			final char ch = sqlFilePost.charAt(i);
+			final char chNext = (sqlFilePost.length() > (i+1) ) ? sqlFilePost.charAt(i+1) : ' ';
+
+			if(quoteStart == -1 && ch == COMMENT_MARKER_CHAR && chNext == COMMENT_MARKER_CHAR)
+			{
+				insideComment = true;
+			}
+
+			if(ch == NEW_LINE_CHAR && quoteStart == -1)
+			{
+				insideComment = false;
+			}
+
+			if(ch == CMD_END_MARKER && insideComment == false)
 			{
 				commandEndLocations.add(i);
 				continue;
 			}
 
-			if(ch == SINGLE_QUOTE_MARKER && quoteStart == -1)
+			if(insideComment == false && ch == SINGLE_QUOTE_MARKER && quoteStart == -1)
 			{
 				quoteStart = i;
 				continue;
@@ -279,6 +296,7 @@ public class StatementFileFactory
 			if(ch == SINGLE_QUOTE_MARKER && quoteStart != -1)
 			{
 				quoteEnd = i;
+				insideComment = false;
 				quotedSegments.add(new QuotedSegment(quoteStart, quoteEnd));
 				quoteStart = -1;
 				quoteEnd = -1;
